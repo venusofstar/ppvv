@@ -1,9 +1,8 @@
 version: "3.9"
 
 services:
-  hls-proxy:
+  iplock-hls:
     build: .
-    container_name: hls-proxy
     ports:
       - "8080:80"
     restart: unless-stopped
