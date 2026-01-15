@@ -1,8 +1,9 @@
 version: "3.9"
 
 services:
-  iplock-hls:
+  poocloud-hls:
     build: .
+    container_name: poocloud-hls
     ports:
       - "8080:80"
     restart: unless-stopped
