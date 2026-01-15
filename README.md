@@ -1,4 +1,4 @@
-# Docker Reverse Proxy (Nginx)
+# HLS / IPTV Reverse Proxy (Docker + Nginx)
 
 ## Run
 ```bash
