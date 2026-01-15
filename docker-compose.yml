@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  reverse-proxy:
+    build: .
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+    depends_on:
+      - app1
+      - app2
+
+  app1:
+    image: node:18-alpine
+    container_name: app1
+    command: sh -c "npm install -g serve && serve -l 3000"
+    
+  app2:
+    image: node:18-alpine
+    container_name: app2
+    command: sh -c "npm install -g http-server && http-server -p 4000"
