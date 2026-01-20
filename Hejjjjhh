@@ -14,6 +14,12 @@ https://ppvv.onrender.com/proxy?url=https://strm.poocloud.in/secure/BSsxWLlvTrka
 #EXTVLCOPT:http-referrer=https://modistreams.org/
 https://ppvv.onrender.com/proxy?url=https%3A%2F%2Fstrm.poocloud.in%2Fsecure%2FBSsxWLlvTrkaUYgitSZepFUbNxIkbfgA%2F1768863600%2F1768888080%2Fdetroitpistons%2Findex.m3u8
 
+#EXTINF:-1 tvg-name="Detroit Pistons PPV" tvg-logo="" group-title="PPV",Detroit Pistons PPV
+#EXTVLCOPT:http-user-agent=Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0
+#EXTVLCOPT:http-origin=https://poocloud.in
+#EXTVLCOPT:http-referrer=https://poocloud.in/
+https://ppvv.onrender.com/proxy?url=https%3A%2F%2Fstrm.poocloud.in%2Fsecure%2FBSsxWLlvTrkaUYgitSZepFUbNxIkbfgA%2F1768863600%2F1768888080%2Fdetroitpistons%2Findex.m3u8
+
 
 #EXTINF:-1 tvg-name="Detroit Pistons PPV" tvg-logo="" group-title="PPV",Detroit Pistons PPV
 #EXTVLCOPT:http-user-agent=Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0
