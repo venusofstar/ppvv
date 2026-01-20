@@ -13,7 +13,7 @@ app.use(cors());
 // CHANNEL MAP (EDIT THIS)
 // ==============================
 const CHANNELS = {
-  "gsw.m3u8": "https://strm.example.com/live/gsw/index.m3u8",
+  "gsw.m3u8": "https://strm.poocloud.in/secure/wMzvzCwrqWLfBnOAKHMSXftBqRqcJSvQ/1768870800/1768895280/goldenstatewarriors/index.m3u8",
   "lakers.m3u8": "https://strm.example.com/live/lakers/index.m3u8",
   "nba1.m3u8": "https://strm.example.com/live/nba1/index.m3u8"
 };
