@@ -2,35 +2,38 @@ const express = require("express");
 const fetch = require("node-fetch");
 const { pipeline } = require("stream");
 const http = require("http");
-const https = require("https");
 const cors = require("cors");
 
 const app = express();
-const PORT = 4123;
+const PORT = 5000;
 
 app.use(cors());
 
-app.get("/", async (req, res) => {
-  const target = req.query.url;
-  if (!target) {
-    return res.status(400).send("Missing ?url=");
-  }
+// ==============================
+// CHANNEL MAP (EDIT THIS)
+// ==============================
+const CHANNELS = {
+  "gsw.m3u8": "https://strm.example.com/live/gsw/index.m3u8",
+  "lakers.m3u8": "https://strm.example.com/live/lakers/index.m3u8",
+  "nba1.m3u8": "https://strm.example.com/live/nba1/index.m3u8"
+};
+
+// ==============================
+// MAIN PROXY
+// ==============================
+app.get("/:file", async (req, res) => {
+  const target = CHANNELS[req.params.file];
+  if (!target) return res.status(404).send("Channel not found");
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-
     const response = await fetch(target, {
       headers: {
-        "User-Agent": req.headers["user-agent"] || "Mozilla/5.0",
-        "Referer": req.headers["referer"] || "",
-        "Origin": req.headers["origin"] || ""
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://modistreams.org/",
+        "Origin": "https://modistreams.org"
       },
-      redirect: "follow",
-      signal: controller.signal
+      redirect: "follow"
     });
-
-    clearTimeout(timeout);
 
     res.status(response.status);
     response.headers.forEach((v, k) => res.setHeader(k, v));
@@ -39,7 +42,7 @@ app.get("/", async (req, res) => {
       if (err) console.error(err);
     });
 
-  } catch (err) {
+  } catch (e) {
     res.status(502).send("Proxy error");
   }
 });
