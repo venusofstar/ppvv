@@ -1,21 +1,32 @@
 {
-  "name": "hls-header-proxy",
+  "name": "ipv4-ipv6-stream-proxy",
   "version": "1.0.0",
-  "description": "HLS / M3U8 proxy server with custom headers and keep-alive support",
+  "description": "High-performance IPv4 / IPv6 HTTP(S) streaming proxy for IPTV, M3U8, DASH",
   "main": "server.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.6.12"
   },
-  "devDependencies": {
-    "nodemon": "^3.0.3"
-  },
-  "engines": {
-    "node": ">=16"
-  }
+  "keywords": [
+    "iptv",
+    "proxy",
+    "m3u8",
+    "dash",
+    "ipv6",
+    "ipv4",
+    "streaming",
+    "shaka",
+    "videojs"
+  ],
+  "author": "HONOR TV PH",
+  "license": "MIT"
 }
