@@ -1,64 +1,118 @@
 const express = require("express");
-const fetch = require("node-fetch");
 const cors = require("cors");
+const fetch = require("node-fetch");
 const http = require("http");
 const https = require("https");
+const { pipeline } = require("stream");
 
 const app = express();
-const PORT = 4123;
+const PORT = process.env.PORT || 3000;
 
+/**
+ * =========================
+ * CHOOSE SOURCE IP
+ * =========================
+ * Use ONE of these
+ */
+
+// IPv6 (recommended if supported)
+const LOCAL_IPV6 = "2001:4860:7:512::3";
+
+// IPv4 fallback
+const LOCAL_IPV4 = "156.59.24.51";
+
+/**
+ * =========================
+ * KEEP-ALIVE AGENTS
+ * =========================
+ */
+const httpAgent = new http.Agent({
+  keepAlive: true,
+  localAddress: LOCAL_IPV4, // change to LOCAL_IPV6 if IPv6 only
+  maxSockets: 200,
+});
+
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  localAddress: LOCAL_IPV6, // IPv6 preferred
+  maxSockets: 200,
+});
+
+/**
+ * =========================
+ * MIDDLEWARE
+ * =========================
+ */
 app.use(cors());
+app.use(express.raw({ type: "*/*" }));
 
-const httpAgent = new http.Agent({ keepAlive: true });
-const httpsAgent = new https.Agent({ keepAlive: true });
+/**
+ * =========================
+ * PROXY ROUTE
+ * =========================
+ * Example:
+ * http://localhost:3000/proxy?url=https://example.com/stream.m3u8
+ */
+app.get("/proxy", async (req, res) => {
+  const targetUrl = req.query.url;
+  if (!targetUrl) {
+    return res.status(400).send("Missing url parameter");
+  }
 
-app.get("/", async (req, res) => {
   try {
-    if (!req.query.url) {
-      return res.status(400).send("Missing url parameter");
-    }
-
-    const targetUrl = decodeURIComponent(req.query.url);
-    const urlObj = new URL(targetUrl);
+    const isHttps = targetUrl.startsWith("https://");
 
     const response = await fetch(targetUrl, {
-      method: "GET",
       headers: {
-        "Host": "strm.poocloud.in",
         "User-Agent":
-          "Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0",
+          "Mozilla/5.0 (Android 13; Mobile) AppleWebKit/537.36 Chrome/120",
         "Accept": "*/*",
-        "Accept-Language": "en-US",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
-        "Origin": "https://modistreams.org",
-        "Referer": "https://modistreams.org/",
         "Connection": "keep-alive",
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "cross-site",
       },
-      agent: urlObj.protocol === "https:" ? httpsAgent : httpAgent,
+      agent: isHttps ? httpsAgent : httpAgent,
+      timeout: 15000,
     });
 
-    if (!response.ok) {
-      return res.status(502).send("Upstream error");
-    }
+    res.status(response.status);
 
-    // forward content-type
-    const contentType = response.headers.get("content-type");
-    if (contentType) res.setHeader("Content-Type", contentType);
+    response.headers.forEach((value, key) => {
+      if (
+        ![
+          "content-encoding",
+          "transfer-encoding",
+          "connection",
+        ].includes(key.toLowerCase())
+      ) {
+        res.setHeader(key, value);
+      }
+    });
 
-    // disable caching
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-
-    response.body.pipe(res);
+    pipeline(response.body, res, (err) => {
+      if (err) {
+        console.error("Pipeline error:", err.message);
+        res.destroy();
+      }
+    });
   } catch (err) {
     console.error("Proxy error:", err.message);
-    res.status(500).send("Proxy failed");
+    res.status(502).send("Proxy fetch failed");
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ HLS Proxy running on http://localhost:${PORT}`);
+/**
+ * =========================
+ * HEALTH CHECK
+ * =========================
+ */
+app.get("/", (req, res) => {
+  res.send("Proxy server running ✔ IPv4 / IPv6 ready");
+});
+
+/**
+ * =========================
+ * START SERVER
+ * =========================
+ */
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Proxy listening on port ${PORT}`);
 });
