@@ -4,7 +4,7 @@
 #EXTVLCOPT:http-user-agent=Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0
 #EXTVLCOPT:http-origin=https://modistreams.org
 #EXTVLCOPT:http-referrer=https://modistreams.org/
-https://ppvv.onrender.com:4123/?url=https://strm.poocloud.in/secure/gXgRHAtFaezricZIUMspONGewHQNYVva/1768863600/1768888080/detroitpistons/index.m3u8
+https://ppvv.onrender.com/proxy?url=https://strm.poocloud.in/secure/BSsxWLlvTrkaUYgitSZepFUbNxIkbfgA/1768863600/1768888080/detroitpistons/index.m3u8
 
 
 
@@ -12,7 +12,7 @@ https://ppvv.onrender.com:4123/?url=https://strm.poocloud.in/secure/gXgRHAtFaezr
 #EXTVLCOPT:http-user-agent=Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0
 #EXTVLCOPT:http-origin=https://modistreams.org
 #EXTVLCOPT:http-referrer=https://modistreams.org/
-http://atone77721.dpdns.org:4123/?url=https://strm.poocloud.in/secure/gXgRHAtFaezricZIUMspONGewHQNYVva/1768863600/1768888080/detroitpistons/index.m3u8
+https://ppvv.onrender.com/proxy?url=https://strm.poocloud.in/secure/BSsxWLlvTrkaUYgitSZepFUbNxIkbfgA/1768863600/1768888080/detroitpistons/index.m3u8
 
 
 #EXTINF:-1 tvg-name="Detroit Pistons PPV" tvg-logo="" group-title="PPV",Detroit Pistons PPV
