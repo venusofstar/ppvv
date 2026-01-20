@@ -10,32 +10,18 @@ const PORT = process.env.PORT || 3000;
 
 /**
  * =========================
- * CHOOSE SOURCE IP
- * =========================
- * Use ONE of these
- */
-
-// IPv6 (recommended if supported)
-const LOCAL_IPV6 = "2001:4860:7:512::3";
-
-// IPv4 fallback
-const LOCAL_IPV4 = "156.59.24.51";
-
-/**
- * =========================
  * KEEP-ALIVE AGENTS
+ * (IPv4 ONLY – Render safe)
  * =========================
  */
 const httpAgent = new http.Agent({
   keepAlive: true,
-  localAddress: LOCAL_IPV4, // change to LOCAL_IPV6 if IPv6 only
-  maxSockets: 200,
+  maxSockets: 300,
 });
 
 const httpsAgent = new https.Agent({
   keepAlive: true,
-  localAddress: LOCAL_IPV6, // IPv6 preferred
-  maxSockets: 200,
+  maxSockets: 300,
 });
 
 /**
@@ -51,26 +37,33 @@ app.use(express.raw({ type: "*/*" }));
  * PROXY ROUTE
  * =========================
  * Example:
- * http://localhost:3000/proxy?url=https://example.com/stream.m3u8
+ * /proxy?url=https%3A%2F%2Fexample.com%2Fstream.m3u8
  */
 app.get("/proxy", async (req, res) => {
-  const targetUrl = req.query.url;
-  if (!targetUrl) {
+  if (!req.query.url) {
     return res.status(400).send("Missing url parameter");
   }
 
+  let targetUrl;
   try {
-    const isHttps = targetUrl.startsWith("https://");
+    targetUrl = decodeURIComponent(req.query.url);
+  } catch {
+    return res.status(400).send("Invalid URL encoding");
+  }
 
+  const isHttps = targetUrl.startsWith("https://");
+
+  try {
     const response = await fetch(targetUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Android 13; Mobile) AppleWebKit/537.36 Chrome/120",
-        "Accept": "*/*",
-        "Connection": "keep-alive",
-      },
       agent: isHttps ? httpsAgent : httpAgent,
       timeout: 15000,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Android 13; Mobile)",
+        "Accept": "*/*",
+        "Referer": "https://poocloud.in/",
+        "Origin": "https://poocloud.in",
+        "Connection": "keep-alive",
+      },
     });
 
     res.status(response.status);
@@ -89,13 +82,13 @@ app.get("/proxy", async (req, res) => {
 
     pipeline(response.body, res, (err) => {
       if (err) {
-        console.error("Pipeline error:", err.message);
+        console.error("Stream pipeline error:", err.message);
         res.destroy();
       }
     });
   } catch (err) {
-    console.error("Proxy error:", err.message);
-    res.status(502).send("Proxy fetch failed");
+    console.error("Proxy fetch error:", err.message);
+    res.status(502).send("Proxy request failed");
   }
 });
 
@@ -105,7 +98,7 @@ app.get("/proxy", async (req, res) => {
  * =========================
  */
 app.get("/", (req, res) => {
-  res.send("Proxy server running ✔ IPv4 / IPv6 ready");
+  res.send("✅ IPTV Proxy running (Render optimized)");
 });
 
 /**
@@ -114,5 +107,5 @@ app.get("/", (req, res) => {
  * =========================
  */
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Proxy listening on port ${PORT}`);
+  console.log(`🚀 Proxy running on port ${PORT}`);
 });
