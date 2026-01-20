@@ -58,10 +58,10 @@ app.get("/proxy", async (req, res) => {
       agent: isHttps ? httpsAgent : httpAgent,
       timeout: 15000,
       headers: {
-        "User-Agent": "Mozilla/5.0 (Android 13; Mobile)",
+        "User-Agent": "http-user-agent=Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0",
         "Accept": "*/*",
-        "Referer": "https://poocloud.in/",
-        "Origin": "https://poocloud.in",
+        "Referer": "https://modistreams.org/",
+        "Origin": "https://modistreams.org",
         "Connection": "keep-alive",
       },
     });
