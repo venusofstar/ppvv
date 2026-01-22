@@ -6,25 +6,25 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.urlencoded({ extended: true }));
 
-/* ================= TARGET PLAYLIST ================= */
-const TARGET_STREAM = "https://masports.dpdns.org/playlist.m3u";
+/* ================= STREAM SOURCES ================= */
+const ottStreamURL = "https://hntv.netlify.app/free-playlist";
+const altStreamURL = "https://pastebin.com/raw/YctRidwE";
 
-/* ================= USER-AGENT LIST ================= */
+/* ================= USER-AGENT LIST (EDITABLE) ================= */
 let allowedAgents = [
   "OTT Navigator",
   "OTT Player",
-  "OTT TV",
-  "IPTV",
-  "VLC"
+  "OTT TV"
 ];
 
 /* ================= SECURITY ================= */
-const DASHBOARD_KEY = process.env.DASHBOARD_KEY || "admin123"; // 🔐 change this
+const DASHBOARD_KEY = "admin123"; // 🔐 change this
 
 /* ================= LOG STORAGE ================= */
 const accessLogs = [];
 
-/* ================= MAIN PLAYLIST ROUTE ================= */
+/* ================= MAIN STREAM ROUTE ================= */
+/* THIS IS YOUR TARGET LINK: example.com/playlist.m3u */
 app.get("/playlist.m3u", async (req, res) => {
   const userAgent = req.headers["user-agent"] || "Unknown";
   const ip =
@@ -32,28 +32,25 @@ app.get("/playlist.m3u", async (req, res) => {
     req.socket.remoteAddress;
 
   const isOTT = allowedAgents.some(agent =>
-    userAgent.toLowerCase().includes(agent.toLowerCase())
+    userAgent.includes(agent)
   );
+
+  const streamURL = isOTT ? ottStreamURL : altStreamURL;
 
   accessLogs.unshift({
     time: new Date().toLocaleString(),
     ip,
     userAgent,
     type: isOTT ? "OTT APP" : "BROWSER",
-    stream: "MASPORTS"
+    stream: isOTT ? "OTT STREAM" : "ALT STREAM"
   });
 
   if (accessLogs.length > 200) accessLogs.pop();
 
-  // Optional: block non-OTT clients
-  // if (!isOTT) {
-  //   return res.status(403).send("OTT Apps Only");
-  // }
-
   try {
-    const response = await fetch(TARGET_STREAM, {
+    const response = await fetch(streamURL, {
       headers: {
-        "User-Agent": userAgent
+        "User-Agent": userAgent   // ✅ ONLY USER-AGENT
       }
     });
 
@@ -77,25 +74,11 @@ app.get("/dashboard", (req, res) => {
 <html>
 <head>
 <title>Access Dashboard</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body{background:#0f172a;color:#e5e7eb;font-family:Arial;padding:20px}
-table{width:100%;border-collapse:collapse}
-th,td{padding:8px;border-bottom:1px solid #334155;font-size:13px}
-th{background:#1e293b}
-.ott{color:#22c55e;font-weight:bold}
-.browser{color:#f97316;font-weight:bold}
-a{color:#38bdf8}
-</style>
 </head>
 <body>
-
 <h2>📊 Access Logs</h2>
-<p>
 <a href="/agents?key=${DASHBOARD_KEY}">⚙ Manage User Agents</a>
-</p>
-
-<table>
+<table border="1" cellpadding="5">
 <tr>
 <th>Time</th><th>IP</th><th>Type</th><th>Stream</th><th>User-Agent</th>
 </tr>
@@ -103,12 +86,12 @@ ${accessLogs.map(l => `
 <tr>
 <td>${l.time}</td>
 <td>${l.ip}</td>
-<td class="${l.type === "OTT APP" ? "ott" : "browser"}">${l.type}</td>
+<td>${l.type}</td>
 <td>${l.stream}</td>
 <td>${l.userAgent}</td>
-</tr>`).join("")}
+</tr>
+`).join("")}
 </table>
-
 </body>
 </html>
 `);
@@ -125,30 +108,17 @@ app.get("/agents", (req, res) => {
 <html>
 <head>
 <title>User Agent Manager</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body{background:#020617;color:#e5e7eb;font-family:Arial;padding:20px}
-input,button{padding:8px;font-size:14px}
-table{width:100%;border-collapse:collapse;margin-top:15px}
-th,td{padding:8px;border-bottom:1px solid #334155}
-th{background:#1e293b}
-button{cursor:pointer}
-.add{background:#22c55e;color:#000;border:none}
-.del{background:#ef4444;color:#fff;border:none}
-a{color:#38bdf8}
-</style>
 </head>
 <body>
-
 <h2>⚙ Allowed User-Agent Manager</h2>
-<p><a href="/dashboard?key=${DASHBOARD_KEY}">⬅ Back to Dashboard</a></p>
+<a href="/dashboard?key=${DASHBOARD_KEY}">⬅ Back</a>
 
 <form method="POST" action="/agents/add?key=${DASHBOARD_KEY}">
-  <input name="agent" placeholder="New User-Agent" required>
-  <button class="add">Add</button>
+<input name="agent" placeholder="New User-Agent" required>
+<button>Add</button>
 </form>
 
-<table>
+<table border="1" cellpadding="5">
 <tr><th>User-Agent</th><th>Action</th></tr>
 ${allowedAgents.map((agent, i) => `
 <tr>
@@ -156,12 +126,12 @@ ${allowedAgents.map((agent, i) => `
 <td>
 <form method="POST" action="/agents/delete?key=${DASHBOARD_KEY}">
 <input type="hidden" name="index" value="${i}">
-<button class="del">Delete</button>
+<button>Delete</button>
 </form>
 </td>
-</tr>`).join("")}
+</tr>
+`).join("")}
 </table>
-
 </body>
 </html>
 `);
