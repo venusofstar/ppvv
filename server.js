@@ -1,214 +1,146 @@
 import express from "express";
 import fetch from "node-fetch";
-import crypto from "crypto";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-/* ================= CONFIG ================= */
-
-const SECRET_KEY = process.env.SECRET_KEY || "CHANGE_THIS_SECRET";
-const ADMIN_KEY  = process.env.ADMIN_KEY  || "admin123";
-
-// Stream URLs
+/* ================= STREAM SOURCES ================= */
 const ottStreamURL = "https://hntv.netlify.app/free-playlist";
 const altStreamURL = "https://pastebin.com/raw/YctRidwE";
 
-const allowedAgents = ["OTT Navigator", "OTT Player", "OTT TV"];
+/* ================= USER-AGENT RULES ================= */
+const allowedAgents = [
+  "OTT Navigator",
+  "OTT Player",
+  "OTT TV"
+];
+
+/* ================= SECURITY ================= */
 const FORCED_REFERER = "https://hntv.netlify.app/free-playlist";
+const DASHBOARD_KEY = "admin123"; // 🔐 change this
 
-/* ================= MEMORY STORAGE ================= */
-// (Render/GitHub friendly – no fs)
-const devices = {};
+/* ================= MEMORY LOGS ================= */
+const accessLogs = [];
 
-/* ================= TOKEN ================= */
-
-function generateDeviceToken(deviceId, expiryMinutes = 60) {
-  const expiresAt = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
-  const raw = `${deviceId}|${expiresAt}`;
-  const payload = Buffer.from(raw).toString("base64");
-
-  const signature = crypto
-    .createHmac("sha256", SECRET_KEY)
-    .update(payload)
-    .digest("hex");
-
-  return { token: `${payload}.${signature}`, expiresAt };
-}
-
-function verifyDeviceToken(token, deviceId) {
-  const device = devices[deviceId];
-  if (!device || device.revoked) return false;
-
-  const [payload, signature] = token.split(".");
-  if (!payload || !signature) return false;
-
-  const expectedSig = crypto
-    .createHmac("sha256", SECRET_KEY)
-    .update(payload)
-    .digest("hex");
-
-  if (signature !== expectedSig) return false;
-
-  const decoded = Buffer.from(payload, "base64").toString();
-  const [id, exp] = decoded.split("|");
-
-  return id === deviceId && Date.now() / 1000 < exp;
-}
-
-function extractDeviceData(ua) {
-  const m = ua.match(/;\s*([^:]+):([A-Za-z0-9+/=.-]+)\)$/);
-  return m ? { deviceId: m[1], token: m[2] } : null;
-}
-
-/* ================= STREAM ================= */
-
+/* ================= MAIN STREAM ROUTE ================= */
 app.get("/", async (req, res) => {
-  const ua = req.headers["user-agent"] || "";
-  const data = extractDeviceData(ua);
+  const userAgent = req.headers["user-agent"] || "Unknown";
+  const ip =
+    req.headers["x-forwarded-for"] ||
+    req.socket.remoteAddress;
 
-  if (!data || !verifyDeviceToken(data.token, data.deviceId)) {
-    return res.status(403).send("Access denied");
-  }
+  const isOTT = allowedAgents.some(agent =>
+    userAgent.includes(agent)
+  );
 
-  const streamURL = allowedAgents.some(a => ua.includes(a))
-    ? ottStreamURL
-    : altStreamURL;
+  const streamURL = isOTT ? ottStreamURL : altStreamURL;
+
+  // Save access log
+  accessLogs.unshift({
+    time: new Date().toLocaleString(),
+    ip,
+    userAgent,
+    type: isOTT ? "OTT APP" : "BROWSER",
+    stream: isOTT ? "OTT STREAM" : "ALT STREAM"
+  });
+
+  if (accessLogs.length > 200) accessLogs.pop();
 
   try {
     const response = await fetch(streamURL, {
       headers: {
-        "User-Agent": ua,
+        "User-Agent": userAgent,
         "Referer": FORCED_REFERER,
-        "Origin": FORCED_REFERER
+        "Origin": FORCED_REFERER,
+        "Cache-Control": "no-cache"
       }
     });
 
+    if (!response.ok) {
+      return res.status(response.status).send("Stream fetch error");
+    }
+
     res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
     response.body.pipe(res);
 
-  } catch {
-    res.status(500).send("Stream error");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Internal Server Error");
   }
 });
 
-/* ================= ADMIN API ================= */
-
-function adminAuth(req, res, next) {
-  if (req.query.key !== ADMIN_KEY) {
-    return res.status(401).send("Unauthorized");
+/* ================= DASHBOARD ================= */
+app.get("/dashboard", (req, res) => {
+  if (req.query.key !== DASHBOARD_KEY) {
+    return res.status(403).send("Access Denied");
   }
-  next();
-}
 
-app.post("/admin/create", adminAuth, (req, res) => {
-  const { deviceId, minutes } = req.body;
-  if (!deviceId) return res.status(400).send("deviceId required");
-
-  const { token, expiresAt } = generateDeviceToken(deviceId, minutes || 60);
-  devices[deviceId] = { token, expiresAt, revoked: false };
-
-  res.json({ deviceId, token, expiresAt });
-});
-
-app.post("/admin/revoke", adminAuth, (req, res) => {
-  const { deviceId } = req.body;
-  if (devices[deviceId]) devices[deviceId].revoked = true;
-  res.json({ success: true });
-});
-
-app.get("/admin/devices", adminAuth, (req, res) => {
-  res.json(devices);
-});
-
-/* ================= DASHBOARD UI ================= */
-
-app.get("/admin", adminAuth, (req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html>
 <head>
-<title>OTT Dashboard</title>
+<meta charset="UTF-8">
+<title>UA Access Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{background:#0f0f0f;color:#fff;font-family:Arial;padding:20px}
-input,button{padding:8px;margin:5px}
-table{width:100%;border-collapse:collapse;margin-top:20px}
-td,th{border:1px solid #333;padding:8px}
-button{cursor:pointer}
+body {
+  background:#0f172a;
+  color:#e5e7eb;
+  font-family:Arial, sans-serif;
+  padding:20px;
+}
+h1 { color:#38bdf8; }
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+th, td {
+  padding:10px;
+  border-bottom:1px solid #334155;
+  font-size:13px;
+}
+th { background:#1e293b; }
+tr:hover { background:#1e293b; }
+.ott { color:#22c55e; font-weight:bold; }
+.browser { color:#f97316; font-weight:bold; }
+small { color:#94a3b8; }
 </style>
 </head>
 <body>
 
-<h2>OTT Device Dashboard</h2>
-
-<h3>Create Token</h3>
-<input id="device" placeholder="Device ID">
-<input id="minutes" value="60">
-<button onclick="create()">Generate</button>
+<h1>📊 User-Agent Access Dashboard</h1>
+<p>Total Requests: <b>${accessLogs.length}</b></p>
 
 <table>
-<thead>
 <tr>
-<th>Device</th><th>Expires</th><th>Status</th><th>User-Agent</th><th>Action</th>
+  <th>Time</th>
+  <th>IP</th>
+  <th>Type</th>
+  <th>Stream</th>
+  <th>User-Agent</th>
 </tr>
-</thead>
-<tbody id="list"></tbody>
+
+${accessLogs.map(log => `
+<tr>
+  <td>${log.time}</td>
+  <td>${log.ip}</td>
+  <td class="${log.type === "OTT APP" ? "ott" : "browser"}">${log.type}</td>
+  <td>${log.stream}</td>
+  <td><small>${log.userAgent}</small></td>
+</tr>
+`).join("")}
+
 </table>
 
-<script>
-const key = "${ADMIN_KEY}";
-
-async function load(){
- const r = await fetch("/admin/devices?key="+key);
- const d = await r.json();
- list.innerHTML="";
- for(const id in d){
-  const x=d[id];
-  const ua=\`OTT TV/1.7.2.2 (Linux;Android 13; en; \${id}:\${x.token})\`;
-  list.innerHTML+=\`
-  <tr>
-   <td>\${id}</td>
-   <td>\${new Date(x.expiresAt*1000).toLocaleString()}</td>
-   <td>\${x.revoked?"REVOKED":"ACTIVE"}</td>
-   <td style="font-size:11px">\${ua}</td>
-   <td><button onclick="revoke('\${id}')">Revoke</button></td>
-  </tr>\`;
- }
-}
-
-async function create(){
- await fetch("/admin/create?key="+key,{
-  method:"POST",
-  headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({
-    deviceId:device.value,
-    minutes:minutes.value
-  })
- });
- load();
-}
-
-async function revoke(id){
- await fetch("/admin/revoke?key="+key,{
-  method:"POST",
-  headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({deviceId:id})
- });
- load();
-}
-
-load();
-</script>
 </body>
 </html>
 `);
 });
 
-/* ================= START ================= */
-
+/* ================= SERVER START ================= */
 app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
