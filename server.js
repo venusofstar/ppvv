@@ -6,51 +6,54 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.urlencoded({ extended: true }));
 
-/* ================= STREAM SOURCES ================= */
-const ottStreamURL = "https://hntv.netlify.app/free-playlist";
-const altStreamURL = "https://pastebin.com/raw/YctRidwE";
+/* ================= TARGET PLAYLIST ================= */
+const TARGET_STREAM = "https://masports.dpdns.org/playlist.m3u";
 
-/* ================= USER-AGENT LIST (EDITABLE) ================= */
+/* ================= USER-AGENT LIST ================= */
 let allowedAgents = [
   "OTT Navigator",
   "OTT Player",
-  "OTT TV"
+  "OTT TV",
+  "IPTV",
+  "VLC"
 ];
 
 /* ================= SECURITY ================= */
-const FORCED_REFERER = "https://hntv.netlify.app/free-playlist";
-const DASHBOARD_KEY = "admin123"; // 🔐 change this
+const DASHBOARD_KEY = process.env.DASHBOARD_KEY || "admin123"; // 🔐 change this
 
 /* ================= LOG STORAGE ================= */
 const accessLogs = [];
 
-/* ================= MAIN STREAM ROUTE ================= */
-app.get("/", async (req, res) => {
+/* ================= MAIN PLAYLIST ROUTE ================= */
+app.get("/playlist.m3u", async (req, res) => {
   const userAgent = req.headers["user-agent"] || "Unknown";
-  const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+  const ip =
+    req.headers["x-forwarded-for"]?.split(",")[0] ||
+    req.socket.remoteAddress;
 
   const isOTT = allowedAgents.some(agent =>
-    userAgent.includes(agent)
+    userAgent.toLowerCase().includes(agent.toLowerCase())
   );
-
-  const streamURL = isOTT ? ottStreamURL : altStreamURL;
 
   accessLogs.unshift({
     time: new Date().toLocaleString(),
     ip,
     userAgent,
     type: isOTT ? "OTT APP" : "BROWSER",
-    stream: isOTT ? "OTT STREAM" : "ALT STREAM"
+    stream: "MASPORTS"
   });
 
   if (accessLogs.length > 200) accessLogs.pop();
 
+  // Optional: block non-OTT clients
+  // if (!isOTT) {
+  //   return res.status(403).send("OTT Apps Only");
+  // }
+
   try {
-    const response = await fetch(streamURL, {
+    const response = await fetch(TARGET_STREAM, {
       headers: {
-        "User-Agent": userAgent,
-        "Referer": FORCED_REFERER,
-        "Origin": FORCED_REFERER
+        "User-Agent": userAgent
       }
     });
 
@@ -58,7 +61,7 @@ app.get("/", async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     response.body.pipe(res);
 
-  } catch {
+  } catch (err) {
     res.status(500).send("Stream Error");
   }
 });
@@ -88,7 +91,9 @@ a{color:#38bdf8}
 <body>
 
 <h2>📊 Access Logs</h2>
-<p><a href="/agents?key=${DASHBOARD_KEY}">⚙ Manage User Agents</a></p>
+<p>
+<a href="/agents?key=${DASHBOARD_KEY}">⚙ Manage User Agents</a>
+</p>
 
 <table>
 <tr>
@@ -149,7 +154,7 @@ ${allowedAgents.map((agent, i) => `
 <tr>
 <td>${agent}</td>
 <td>
-<form method="POST" action="/agents/delete?key=${DASHBOARD_KEY}" style="display:inline">
+<form method="POST" action="/agents/delete?key=${DASHBOARD_KEY}">
 <input type="hidden" name="index" value="${i}">
 <button class="del">Delete</button>
 </form>
@@ -191,4 +196,5 @@ app.post("/agents/delete", (req, res) => {
 /* ================= START SERVER ================= */
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📺 Playlist: http://localhost:${PORT}/playlist.m3u`);
 });
