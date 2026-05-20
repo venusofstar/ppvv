@@ -1,5 +1,16 @@
 #EXTM3U
 
+
+
+#KODIPROP:inputstream.adaptive.license_type=org.w3.clearkey
+#KODIPROP:inputstream.adaptive.license_key=e1941850b6f2441eb3d1f711947f2c50:f02003585b7768d6d79780c24afe6e33
+#EXTINF:-1 tvg-id="mmk76" tvg-name="MMK - (Rehas)" tvg-logo="https://i.imgur.com/1neyjEa.jpg" group-title="🎬 MAALA-ALA MO KAYA!",MMK - (Rehas)
+ttps://iwant-video.akamaized.net/maalaalamokaya-s007e110/7a091014-04c8-4068-90dc-686d0e28bfaf/manifest-2.mpd
+
+
+
+
+
 #EXTINF:-1 tvg-name="Detroit Pistons PPV" tvg-logo="" group-title="PPV",Detroit Pistons PPV
 #EXTVLCOPT:http-user-agent=Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0
 #EXTVLCOPT:http-origin=https://modistreams.org
