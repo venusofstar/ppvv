@@ -1,11 +1,12 @@
 {
-  "name": "hls-server",
+  "name": "stream-api",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "pubnub": "^9.8.0"
   }
 }
