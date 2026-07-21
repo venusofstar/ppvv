@@ -1,12 +1,13 @@
 {
-  "name": "akamai-hdnts-api",
+  "name": "dash-mpd-proxy",
   "version": "1.0.0",
-  "description": "Akamai HDNTS Token Generator",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^4.19.2",
+    "axios": "^1.7.0",
+    "cors": "^2.8.5"
   }
 }
