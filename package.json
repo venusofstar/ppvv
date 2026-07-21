@@ -1,5 +1,5 @@
 {
-  "name": "plive-render-proxy",
+  "name": "plive-proxy",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
