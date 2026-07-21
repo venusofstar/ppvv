@@ -4,115 +4,83 @@ const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 app.use(cors());
 app.use(express.json());
 
-// --------------------------
-// Configuration
-// --------------------------
-const AUTH_API = 'https://playback-auth-service.api.plive.quickplay.com/media/content/authorize';
 const ORIGIN_BASE = 'https://qp-pldt-live-bpk-01-prod.akamaized.net';
-const YOUR_RENDER_DOMAIN = 'https://test.onrender.com';
+const PLIVE_URL = 'https://www.plive.com.ph/';
 
-// Store latest valid token (auto-refreshes)
-let cachedToken = null;
-let tokenExpiry = 0;
-
-// --------------------------
-// 1. Get Fresh Token from API
-// --------------------------
+// --- Get fresh hdnts token from PLive ---
 async function getFreshToken() {
-  // Reuse token if still valid (expires ~2min, refresh 10s early)
-  if (cachedToken && Date.now() < tokenExpiry - 10000) {
-    return cachedToken;
-  }
-
   try {
-    const res = await axios.get(AUTH_API, {
+    // Step 1: Get PLive session cookies
+    const sessionRes = await axios.get(PLIVE_URL, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://www.plive.com.ph/'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
       },
       timeout: 10000
     });
 
-    // Extract full signed URL or just the token part
-    const fullSignedUrl = res.data?.manifestUrl || res.data?.url;
-    if (!fullSignedUrl) throw new Error('No signed URL returned from API');
+    const cookies = sessionRes.headers['set-cookie']?.join('; ') || '';
 
-    cachedToken = fullSignedUrl.split('?hdnts=')[1];
-    // Parse expiry from token
-    const expMatch = cachedToken.match(/exp=(\d+)/);
-    tokenExpiry = expMatch ? parseInt(expMatch[1]) * 1000 : Date.now() + 110000;
+    // Step 2: Call PLive's internal auth endpoint (adjust if needed)
+    // You may need to inspect plive.com.ph network tab for exact endpoint
+    const authRes = await axios.get('https://www.plive.com.ph/api/get-stream-token', {
+      headers: {
+        'Referer': PLIVE_URL,
+        'Cookie': cookies,
+        'User-Agent': sessionRes.config.headers['User-Agent']
+      },
+      timeout: 10000
+    });
 
-    console.log('✅ Got fresh token from API');
-    return cachedToken;
-  } catch (err) {
-    console.error('❌ Token fetch failed:', err.message);
-    throw err;
+    return authRes.data?.hdnts || authRes.data?.token || null;
+  } catch (e) {
+    console.error('Token fetch failed:', e.message);
+    return null;
   }
 }
 
-// --------------------------
-// 2. Your Render Proxy Endpoint
-// --------------------------
+// --- Proxy endpoint with auto-token ---
 app.get('/bpk-tv/pl_sdi5/default/index.mpd', async (req, res) => {
   try {
-    // Use token from request OR auto-fetch fresh one from API
-    const token = req.query.hdnts || await getFreshToken();
-    const targetUrl = `${ORIGIN_BASE}/bpk-tv/pl_sdi5/default/index.mpd?hdnts=${token}`;
+    let hdnts = req.query.hdnts;
 
-    // Forward request to Akamai
+    // Auto-fetch if no token provided
+    if (!hdnts) {
+      hdnts = await getFreshToken();
+      if (!hdnts) return res.status(401).send('No valid token — provide hdnts or log into PLive first');
+    }
+
+    const targetUrl = `${ORIGIN_BASE}${req.path}?hdnts=${encodeURIComponent(hdnts)}`;
+
     const streamRes = await axios.get(targetUrl, {
       headers: {
         'Accept': 'application/dash+xml',
-        'User-Agent': 'Mozilla/5.0',
-        'Referer': 'https://www.plive.com.ph/'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
+        'Referer': PLIVE_URL
       },
       responseType: 'text',
       timeout: 15000
     });
 
-    // Serve from your Render domain
     res.setHeader('Content-Type', 'application/dash+xml');
-    res.setHeader('Access-Control-Allow-Origin', '*');
     res.send(streamRes.data);
   } catch (err) {
     res.status(err.response?.status || 500).send(`
-      <h3>Stream Proxy Error</h3>
-      <p>Error: ${err.message}</p>
-      <p>Get direct signed link: <code>${YOUR_RENDER_DOMAIN}/api/get-signed</code></p>
+      <h3>Proxy Error</h3>
+      <p>Message: ${err.message}</p>
+      <p><strong>Fix:</strong> Log into <a href="${PLIVE_URL}">plive.com.ph</a> to get a fresh token</p>
     `);
   }
 });
 
-// --------------------------
-// 3. Helper: Get full signed link via Render
-// --------------------------
-app.get('/api/get-signed', async (req, res) => {
-  try {
-    const token = await getFreshToken();
-    res.json({
-      originalSignedUrl: `${ORIGIN_BASE}/bpk-tv/pl_sdi5/default/index.mpd?hdnts=${token}`,
-      yourRenderUrl: `${YOUR_RENDER_DOMAIN}/bpk-tv/pl_sdi5/default/index.mpd?hdnts=${token}`,
-      note: 'Token valid for ~2 minutes'
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// --------------------------
-// 4. Root Page
-// --------------------------
 app.get('/', (req, res) => {
   res.send(`
-    <h3>✅ Proxy Live on ${YOUR_RENDER_DOMAIN}</h3>
-    <p>Use this link in your player (auto-fetches fresh token):</p>
-    <code>${YOUR_RENDER_DOMAIN}/bpk-tv/pl_sdi5/default/index.mpd</code>
-    <p>Or get full signed link: <a href="${YOUR_RENDER_DOMAIN}/api/get-signed">/api/get-signed</a></p>
+    <h3>✅ Proxy Ready</h3>
+    <p>Use: <code>/${'bpk-tv/pl_sdi5/default/index.mpd'}?hdnts=YOUR_TOKEN</code></p>
+    <p>Or it will auto-fetch if you have valid PLive credentials</p>
   `);
 });
 
-app.listen(PORT, () => console.log(`🚀 Running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Running on port ${PORT}`));
