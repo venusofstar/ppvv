@@ -1,35 +1,47 @@
 const express = require('express');
 const axios = require('axios');
-const { parseStringPromise, Builder } = require('xml2js');
+const cors = require('cors');
 
 const app = express();
-const PORT = 3000;
-const SOURCE_MPD = 'http://136.239.173.3:6610/001/2/ch00000090990000001314/manifest.mpd?AuthInfo=v87HD9rEhwHiAdYyrP20TsXah2%2FZLFNNIdWrVrXDMAp7Iya5QVRTA1RELFN4tQIJ2%2FjHNuou2Jtxin49X3LQKw%3D%3D&version=v1.0&BreakPoint=0&virtualDomain=001.live_hls.zte.com&programid=ch00000000000000001814&contentid=ch00000000000000001814&videoid=ch00000090990000001314&recommendtype=0&userid=1662150007478&boid=001&stbid=02%3A00%3A00%3A00%3A00%3A00&terminalflag=1&profilecode=&usersessionid=UAIG9NVEJ1AXXX&NeedJITP=1&JITPMediaType=DASH&JITPDRMType=NO&IASHttpSessionId=RR20446920260101155241033759&ispcode=55';
+app.use(cors()); // Allow streaming clients
 
-// Serve/process MPD (keep as MPD format)
-app.get('/index.mpd', async (req, res) => {
+const PORT = process.env.PORT || 3000;
+const ORIGIN_MPD = 'https://qp-pldt-live-bpk-01-prod.akamaized.net/bpk-tv/pl_sdi5/default/index.mpd';
+
+// Match your exact path
+app.get('/bpk-tv/pl_sdi5/default/index.mpd', async (req, res) => {
   try {
-    // Fetch original manifest
-    const { data: mpdXml } = await axios.get(SOURCE_MPD, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      responseType: 'text'
+    const { data, headers } = await axios.get(ORIGIN_MPD, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+      responseType: 'text',
+      timeout: 15000
     });
 
-    // Optional: parse, modify, re-serialize (still MPD)
-    const parsed = await parseStringPromise(mpdXml);
-    // e.g. adjust base URLs, replace paths, add headers here
-    const builder = new Builder({ headless: false });
-    const modifiedMpd = builder.buildObject(parsed);
-
-    // Return as valid MPD
+    // Correct MIME type for DASH
     res.setHeader('Content-Type', 'application/dash+xml');
-    res.send(modifiedMpd);
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    res.send(data);
   } catch (err) {
-    console.error('MPD fetch/process error:', err.message);
-    res.status(502).send('Failed to load MPD manifest');
+    console.error('Proxy error:', err.response?.status || err.message);
+    res.status(err.response?.status || 502).send('Failed to fetch MPD manifest');
+  }
+});
+
+// Optional: Proxy segment requests too if needed
+app.use('/bpk-tv', async (req, res) => {
+  try {
+    const target = `https://qp-pldt-live-bpk-01-prod.akamaized.net${req.originalUrl}`;
+    const { data } = await axios.get(target, {
+      responseType: 'stream',
+      timeout: 30000
+    });
+    data.pipe(res);
+  } catch {
+    res.status(404).end();
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Running on port ${PORT}`);
+  console.log(`Serving MPD at: /bpk-tv/pl_sdi5/default/index.mpd`);
 });
