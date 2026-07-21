@@ -31,6 +31,18 @@ const CHANNELS = {
       "https://ucdn.mediaquest.com.ph/bpk-tv/pl_sdi2/default/",
     manifest:
       "index.mpd"
+  },
+  
+  gma: {
+    baseUrl: "http://136.158.97.2:6610/001/2/ch00000090990000001083/",
+    manifest: "manifest.mpd?AuthInfo=v87HD9rEhwHiAdYyrP20TsXah2%2FZLFNNIdWrVrXDMApiZhzOAmsfItUIS2UHXxD0syK4TH4mOENKJ45mwOyS0g%3D%3D&version=v1.0&BreakPoint=0&virtualDomain=001.live_hls.zte.com&programid=ch00000000000000001173&contentid=ch00000000000000001173&videoid=ch00000090990000001083&recommendtype=0&userid=1071962425102&boid=001&stbid=02%3A00%3A00%3A00%3A00%3A00&terminalflag=1&profilecode=&usersessionid=4H9039UO28ZXXX&NeedJITP=1&JITPMediaType=DASH&JITPDRMType=NO&IASHttpSessionId=RR20451820260101155236142588&ispcode=55"
+  },
+
+  test: {
+    baseUrl:
+      "https://ac-014.live.p7s1video.net/c3dbc18c/t_014/srf-info-ch-hd/",
+    manifest:
+      "cenc-default.mpd"
   }
 };
 
