@@ -1,16 +1,12 @@
 {
-  "name": "plive-render-proxy",
+  "name": "akamai-hdnts-api",
   "version": "1.0.0",
+  "description": "Akamai HDNTS Token Generator",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "axios": "^1.10.0",
-    "cors": "^2.8.5",
-    "express": "^5.2.0"
-  },
-  "engines": {
-    "node": "18.x || 20.x || 22.x"
+    "express": "^5.1.0"
   }
 }
