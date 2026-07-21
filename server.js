@@ -28,7 +28,7 @@ const CHANNELS = {
 
   pl5: {
     baseUrl:
-      "https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/pl_sdi2/default/",
+      "https://ucdn.mediaquest.com.ph/bpk-tv/pl_sdi2/default/",
     manifest:
       "index.mpd"
   }
