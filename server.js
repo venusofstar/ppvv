@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 const ORIGIN_BASE = 'https://qp-pldt-live-bpk-01-prod.akamaized.net';
-const PLIVE_URL = 'https://www.plive.com.ph/';
+const PLIVE_URL = 'https://playback-auth-service.api.plive.quickplay.com/media/content/authorize';
 
 // --- Get fresh hdnts token from PLive ---
 async function getFreshToken() {
@@ -25,7 +25,7 @@ async function getFreshToken() {
 
     // Step 2: Call PLive's internal auth endpoint (adjust if needed)
     // You may need to inspect plive.com.ph network tab for exact endpoint
-    const authRes = await axios.get('https://www.plive.com.ph/api/get-stream-token', {
+    const authRes = await axios.get('https://playback-auth-service.api.plive.quickplay.com/media/content/authorize', {
       headers: {
         'Referer': PLIVE_URL,
         'Cookie': cookies,
